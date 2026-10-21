@@ -1,50 +1,51 @@
-name: Run ToonKatha Automation
+name: Daily Auto Story Video Generator
 
 on:
   schedule:
-    - cron: '30 12 * * *' # Daily at 6:00 PM IST (12:30 UTC)
-  workflow_dispatch:
+    # Roz Indian Time ke hisab se automatic chalega (6:00 AM IST aur 6:00 PM IST)
+    - cron: '30 0 * * *'
+    - cron: '30 12 * * *'
+  workflow_dispatch: # Manual run button ke liye
 
 jobs:
-  run-script:
+  build-and-run:
     runs-on: ubuntu-latest
-    permissions:
-      contents: write
+
     steps:
-      - name: Checkout Code
-        uses: actions/checkout@v3
+    - name: Checkout Repository
+      uses: actions/checkout@v3
 
-      - name: Set up Python
-        uses: actions/setup-python@v4
-        with:
-          python-version: '3.10'
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.10'
 
-      - name: Install System Dependencies (FFmpeg)
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y ffmpeg
+    - name: Install Dependencies and Upgrade AI Tools
+      run: |
+        python -m pip install --upgrade pip
+        pip install --upgrade google-generativeai edge-tts moviepy pillow google-api-python-client google-auth-oauthlib requests
 
-      - name: Install Python Dependencies
-        run: |
-          python -m pip install --upgrade pip
-          pip install -r requirements.txt
+    - name: Run Script
+      env:
+        GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+        YOUTUBE_CLIENT_ID: ${{ secrets.YOUTUBE_CLIENT_ID }}
+        YOUTUBE_CLIENT_SECRET: ${{ secrets.YOUTUBE_CLIENT_SECRET }}
+        YOUTUBE_REFRESH_TOKEN: ${{ secrets.YOUTUBE_REFRESH_TOKEN }}
+      run: |
+        python main.py
 
-      - name: Run Script
-        env:
-          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
-        run: |
-          python main.py
+    - name: Upload Video Artifact
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: story-short-video
+        path: story_video.mp4
 
-      - name: Upload Video Artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: story-short-video
-          path: story_video.mp4
-
-      - name: Commit Progress
-        run: |
-          git config --global user.name "github-actions[bot]"
-          git config --global user.email "github-actions[bot]@users.noreply.github.com"
-          git add progress.json
-          git commit -m "Update story episode progress" || echo "No changes to commit"
-          git push
+    - name: Save Progress Automatically
+      if: always()
+      run: |
+        git config --global user.name "github-actions[bot]"
+        git config --global user.email "github-actions[bot]@users.noreply.github.com"
+        git add progress.json || true
+        git commit -m "Auto-update story progress" || true
+        git push || true
