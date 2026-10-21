@@ -3,6 +3,7 @@ import json
 import asyncio
 import google.generativeai as genai
 import edge_tts
+from moviepy.editor import TextClip, AudioFileClip, ColorClip, CompositeVideoClip
 
 # Gemini API Configure
 GEMINI_KEY = os.getenv("GEMINI_API_KEY")
@@ -73,11 +74,27 @@ def generate_episodic_story():
     return story_text, story_title, current_part
 
 async def generate_voiceover(text, output_file="narration.mp3"):
-    # Clear out formatting for clean TTS
     clean_text = "\n".join([line for line in text.splitlines() if not line.startswith("Title:") and not line.startswith("शीर्षक:")])
     communicate = edge_tts.Communicate(clean_text, voice="hi-IN-SwaraNeural")
     await communicate.save(output_file)
     print(f"Voiceover generated successfully: {output_file}")
+
+def create_video(audio_file="narration.mp3", output_video="story_video.mp4"):
+    print("Rendering YouTube Short Video...")
+    # Load audio to get exact duration
+    audio_clip = AudioFileClip(audio_file)
+    duration = audio_clip.duration
+
+    # Create a 9:16 vertical background (Dark Blue / Suspense theme)
+    # Resolution for Shorts: 1080x1920
+    bg_clip = ColorClip(size=(1080, 1920), color=(20, 24, 33), duration=duration)
+
+    # Set audio to background clip
+    video = bg_clip.set_audio(audio_clip)
+
+    # Write final video file
+    video.write_videofile(output_video, fps=24, codec="libx264", audio_codec="aac")
+    print(f"Video rendered successfully: {output_video}")
 
 if __name__ == "__main__":
     print("Starting ToonKatha Daily Episode Pipeline...")
@@ -85,3 +102,6 @@ if __name__ == "__main__":
     
     print("Generating Hindi Voiceover...")
     asyncio.run(generate_voiceover(story_text))
+
+    print("Creating Video...")
+    create_video()
