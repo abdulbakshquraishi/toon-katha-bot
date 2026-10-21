@@ -35,7 +35,8 @@ def generate_episodic_story():
     total_parts = progress.get("total_parts", 5)
     story_title = progress.get("story_title", "")
 
-    model = genai.GenerativeModel('gemini-flash-latest')
+    # Updated to standard Gemini 1.5 Flash model
+    model = genai.GenerativeModel('gemini-1.5-flash')
 
     if current_part == 1 or not story_title:
         prompt = (
@@ -82,7 +83,6 @@ def create_video(audio_file="narration.mp3", output_video="story_video.mp4"):
     audio_clip = AudioFileClip(audio_file)
     duration = audio_clip.duration
 
-    # Reliable high-resolution cartoon background asset
     img_url = "https://img.freepik.com/free-vector/cartoon-park-landscape-with-green-grass-trees-hills_107791-16781.jpg"
     res = requests.get(img_url)
     with open("bg.jpg", "wb") as f:
@@ -94,7 +94,6 @@ def create_video(audio_file="narration.mp3", output_video="story_video.mp4"):
     bg_clip = ImageClip("bg.jpg").with_duration(duration)
     video = CompositeVideoClip([bg_clip]).with_audio(audio_clip)
     
-    # Bulletproof rendering settings for mobile compatibility (Zero Black Screen)
     video.write_videofile(
         output_video, 
         fps=24, 
