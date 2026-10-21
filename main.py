@@ -1,4 +1,9 @@
 import os
+import subprocess
+
+# Auto-upgrade libraries to latest versions to prevent any 404/NotFound errors
+subprocess.run(["pip", "install", "--upgrade", "google-generativeai", "edge-tts", "moviepy", "pillow", "google-api-python-client", "google-auth-oauthlib"])
+
 import json
 import asyncio
 import requests
@@ -35,8 +40,8 @@ def generate_episodic_story():
     total_parts = progress.get("total_parts", 5)
     story_title = progress.get("story_title", "")
 
-    # Using the exact stable model name for python SDK
-    model = genai.GenerativeModel('gemini-pro')
+    # Using the standard modern Gemini 1.5 Flash model
+    model = genai.GenerativeModel('gemini-1.5-flash')
 
     if current_part == 1 or not story_title:
         prompt = (
