@@ -3,7 +3,7 @@ import json
 import asyncio
 import google.generativeai as genai
 import edge_tts
-from moviepy.editor import TextClip, AudioFileClip, ColorClip, CompositeVideoClip
+from moviepy.editor import AudioFileClip, ColorClip
 
 # Gemini API Configure
 GEMINI_KEY = os.getenv("GEMINI_API_KEY")
@@ -81,12 +81,10 @@ async def generate_voiceover(text, output_file="narration.mp3"):
 
 def create_video(audio_file="narration.mp3", output_video="story_video.mp4"):
     print("Rendering YouTube Short Video...")
-    # Load audio to get exact duration
     audio_clip = AudioFileClip(audio_file)
     duration = audio_clip.duration
 
-    # Create a 9:16 vertical background (Dark Blue / Suspense theme)
-    # Resolution for Shorts: 1080x1920
+    # Create a 9:16 vertical background (Dark Blue / Suspense theme) - 1080x1920
     bg_clip = ColorClip(size=(1080, 1920), color=(20, 24, 33), duration=duration)
 
     # Set audio to background clip
