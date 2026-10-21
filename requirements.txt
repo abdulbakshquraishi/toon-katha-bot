@@ -1,3 +1,5 @@
 google-generativeai
 edge-tts
 moviepy
+requests
+pillow
