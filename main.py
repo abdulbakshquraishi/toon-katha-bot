@@ -1,5 +1,6 @@
 import os
 import json
+import time
 import asyncio
 import requests
 import google.generativeai as genai
@@ -35,7 +36,6 @@ def generate_episodic_story():
     total_parts = progress.get("total_parts", 5)
     story_title = progress.get("story_title", "")
 
-    # Updated to the exact recommended model name: gemini-3.8-flash
     model = genai.GenerativeModel('models/gemini-3.8-flash')
 
     if current_part == 1 or not story_title:
@@ -50,8 +50,18 @@ def generate_episodic_story():
             f"Write Part {current_part} of {total_parts} as a 40-second YouTube Shorts script in simple Hindi with high energy."
         )
 
-    response = model.generate_content(prompt)
-    story_text = response.text
+    # Auto-Retry Loop for Quota Exhaustion (429 Error Handler)
+    max_retries = 3
+    for attempt in range(max_retries):
+        try:
+            response = model.generate_content(prompt)
+            story_text = response.text
+            break
+        except Exception as e:
+            print(f"Quota limit hit (Attempt {attempt+1}/{max_retries}). Retrying in 15 seconds...")
+            if attempt == max_retries - 1:
+                raise e
+            time.sleep(15)
 
     if current_part == 1:
         for line in story_text.splitlines():
@@ -120,7 +130,7 @@ def upload_to_youtube(video_path, title):
         "snippet": {
             "title": f"{title} | Hindi Cartoon Story #Shorts",
             "description": "Dekhiye sabse majedar hindi cartoon moral stories! Subscribe for daily fun. #shorts #cartoon #moralstories",
-            "tags": ["shorts", "hindi stories", "cartoon", "moral story", "kids animation"],
+            *tags*: ["shorts", "hindi stories", "cartoon", "moral story", "kids animation"],
             "categoryId": "15"
         },
         "status": {"privacyStatus": "public", "selfDeclaredMadeForKids": True}
