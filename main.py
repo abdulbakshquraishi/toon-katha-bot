@@ -36,7 +36,8 @@ def generate_episodic_story():
     total_parts = progress.get("total_parts", 5)
     story_title = progress.get("story_title", "")
 
-    model = genai.GenerativeModel('models/gemini-3.8-flash')
+    # Using Gemini 1.5 Flash-8B which has 1500 requests/day free tier quota
+    model = genai.GenerativeModel('models/gemini-1.5-flash-8b')
 
     if current_part == 1 or not story_title:
         prompt = (
@@ -50,7 +51,6 @@ def generate_episodic_story():
             f"Write Part {current_part} of {total_parts} as a 40-second YouTube Shorts script in simple Hindi with high energy."
         )
 
-    # Increased retry wait time to 65 seconds to comfortably bypass Free Tier 1-minute cooldown
     max_retries = 3
     for attempt in range(max_retries):
         try:
@@ -58,10 +58,10 @@ def generate_episodic_story():
             story_text = response.text
             break
         except Exception as e:
-            print(f"Quota limit hit (Attempt {attempt+1}/{max_retries}). Waiting 65 seconds for rate limit reset...")
+            print(f"Quota limit hit (Attempt {attempt+1}/{max_retries}). Retrying in 15 seconds...")
             if attempt == max_retries - 1:
                 raise e
-            time.sleep(65)
+            time.sleep(15)
 
     if current_part == 1:
         for line in story_text.splitlines():
