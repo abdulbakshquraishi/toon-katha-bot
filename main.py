@@ -1,19 +1,13 @@
 import os
 import json
-import time
 import asyncio
 import requests
-import google.generativeai as genai
 import edge_tts
 from moviepy import AudioFileClip, ImageClip, CompositeVideoClip
 from PIL import Image
 from google.oauth2.credentials import Credentials
 from googleapiclient.discovery import build
 from googleapiclient.http import MediaFileUpload
-
-# Gemini API Setup
-GEMINI_KEY = os.getenv("GEMINI_API_KEY")
-genai.configure(api_key=GEMINI_KEY)
 
 PROGRESS_FILE = "progress.json"
 
@@ -24,72 +18,42 @@ def get_current_progress():
                 return json.load(f)
         except Exception:
             pass
-    return {"story_title": "", "current_part": 1, "total_parts": 5}
+    return {"current_part": 1, "total_parts": 5}
 
 def save_progress(progress):
     with open(PROGRESS_FILE, "w", encoding="utf-8") as f:
         json.dump(progress, f, indent=4, ensure_ascii=False)
 
-def generate_episodic_story():
+def generate_offline_script():
     progress = get_current_progress()
-    current_part = progress.get("current_part", 1)
-    total_parts = progress.get("total_parts", 5)
-    story_title = progress.get("story_title", "")
-
-    # Using Gemini 1.5 Flash-8B which has 1500 requests/day free tier quota
-    model = genai.GenerativeModel('models/gemini-1.5-flash-8b')
-
-    if current_part == 1 or not story_title:
-        prompt = (
-            "Generate a super funny, exciting and moral Hindi cartoon story for kids in 5 parts. "
-            "Write Part 1 as a 40-second YouTube Shorts script in simple Hindi. "
-            "Start with 'Title: [Story Title]' at the top. Make it very engaging!"
-        )
-    else:
-        prompt = (
-            f"Continue the hit Hindi cartoon story '{story_title}'. "
-            f"Write Part {current_part} of {total_parts} as a 40-second YouTube Shorts script in simple Hindi with high energy."
-        )
-
-    max_retries = 3
-    for attempt in range(max_retries):
-        try:
-            response = model.generate_content(prompt)
-            story_text = response.text
-            break
-        except Exception as e:
-            print(f"Quota limit hit (Attempt {attempt+1}/{max_retries}). Retrying in 15 seconds...")
-            if attempt == max_retries - 1:
-                raise e
-            time.sleep(15)
-
-    if current_part == 1:
-        for line in story_text.splitlines():
-            if "Title:" in line or "शीर्षक:" in line:
-                story_title = line.replace("Title:", "").replace("शीर्षक:", "").strip()
-                break
-        if not story_title:
-            story_title = "Majedar Jungle Ki Kahani"
-        progress["story_title"] = story_title
-
-    if current_part >= total_parts:
+    part = progress.get("current_part", 1)
+    
+    # Pre-baked high-engagement moral stories script parts to completely bypass API quotas forever!
+    stories = {
+        1: ("Sacha Mitra", "Ek gaon mein do dost rehte the - Ram aur Shyam. Musibat ke waqt Ram ne Shyam ka sath diya. Isse yeh sikh milti hai ki sache dost wahi hain jo mushkil mein kaam aayein."),
+        2: ("Lalach ka Phal", "Ek din ek lalachu kisan ko sone ka anda dene wali murgi mili. Usne jaldi ameer banne ke liye murgi ko hi kaat diya aur kuch nahi mila. Lalach buri bala hai."),
+        3: ("Mehnat ki Taqat", "Rahul padhai se bhagta tha. Par jab usne mehnat ki, toh class mein top kiya. Mehnat karne walon ki kabhi haar nahi hoti."),
+        4: ("Bado ka Aadar", "Ek chhota bachcha rozsubah bujurgon ki seva karta tha. Aage chalkar wahi bacha sabse bada insaan bana. Bado ka aadar hi asli dharm hai."),
+        5: ("Sach ki Jeet", "Ek gariin imandaar ladke ko raste mein sona mila, usne malik ko lauta diya. Imandaari hi sabse badi poonji hai.")
+    }
+    
+    title, text = stories.get(part, stories[1])
+    
+    if part >= 5:
         progress["current_part"] = 1
-        progress["story_title"] = ""
     else:
         progress["current_part"] += 1
-
+        
     save_progress(progress)
-    return story_text, story_title
+    return title, text
 
 async def generate_voiceover(text, output_file="narration.mp3"):
-    clean_lines = [line for line in text.splitlines() if not line.startswith("Title:") and not line.startswith("शीर्षक:")]
-    clean_text = "\n".join(clean_lines)
-    communicate = edge_tts.Communicate(clean_text, voice="hi-IN-SwaraNeural")
+    communicate = edge_tts.Communicate(text, voice="hi-IN-SwaraNeural")
     await communicate.save(output_file)
     print("Voiceover generated successfully!")
 
 def create_video(audio_file="narration.mp3", output_video="story_video.mp4"):
-    print("Rendering High-Quality Cartoon Video...")
+    print("Rendering High-Quality Video...")
     audio_clip = AudioFileClip(audio_file)
     duration = audio_clip.duration
 
@@ -120,7 +84,7 @@ def upload_to_youtube(video_path, title):
     refresh_token = os.getenv("YOUTUBE_REFRESH_TOKEN")
 
     if not all([client_id, client_secret, refresh_token]):
-        print("YouTube credentials missing. Skipping upload for now.")
+        print("YouTube credentials missing. Skipping upload.")
         return
 
     creds = Credentials(None, refresh_token=refresh_token, token_uri="https://oauth2.googleapis.com/token", client_id=client_id, client_secret=client_secret)
@@ -128,8 +92,8 @@ def upload_to_youtube(video_path, title):
 
     request_body = {
         "snippet": {
-            "title": f"{title} | Hindi Cartoon Story #Shorts",
-            "description": "Dekhiye sabse majedar hindi cartoon moral stories! Subscribe for daily fun. #shorts #cartoon #moralstories",
+            "title": f"{title} | Hindi Moral Stories #Shorts",
+            "description": "Dekhiye sabse behtareen hindi moral stories! Subscribe for daily fun. #shorts #moralstories #hindistories",
             "tags": ["shorts", "hindi stories", "cartoon", "moral story", "kids animation"],
             "categoryId": "15"
         },
@@ -142,11 +106,11 @@ def upload_to_youtube(video_path, title):
     print("Uploaded to YouTube successfully!")
 
 if __name__ == "__main__":
-    print("Starting AI Toon Pipeline...")
-    story_text, story_title = generate_episodic_story()
-    asyncio.run(generate_voiceover(story_text))
+    print("Starting Hardcore Automated Pipeline...")
+    title, text = generate_offline_script()
+    asyncio.run(generate_voiceover(text))
     create_video()
     try:
-        upload_to_youtube("story_video.mp4", story_title)
+        upload_to_youtube("story_video.mp4", title)
     except Exception as e:
-        print(f"Upload status note: {e}")
+        print(f"Upload note: {e}")
