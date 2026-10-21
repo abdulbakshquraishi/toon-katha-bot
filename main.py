@@ -130,7 +130,7 @@ def upload_to_youtube(video_path, title):
         "snippet": {
             "title": f"{title} | Hindi Cartoon Story #Shorts",
             "description": "Dekhiye sabse majedar hindi cartoon moral stories! Subscribe for daily fun. #shorts #cartoon #moralstories",
-            *tags*: ["shorts", "hindi stories", "cartoon", "moral story", "kids animation"],
+            "tags": ["shorts", "hindi stories", "cartoon", "moral story", "kids animation"],
             "categoryId": "15"
         },
         "status": {"privacyStatus": "public", "selfDeclaredMadeForKids": True}
