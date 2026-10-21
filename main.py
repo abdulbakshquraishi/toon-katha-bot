@@ -1,11 +1,9 @@
 import os
 import json
 import asyncio
-import requests
 import google.generativeai as genai
 import edge_tts
-from moviepy import AudioFileClip, VideoFileClip, ImageClip, CompositeVideoClip, concatenate_videoclips
-from PIL import Image
+from moviepy import AudioFileClip, ColorClip, CompositeVideoClip
 from google.oauth2.credentials import Credentials
 from googleapiclient.discovery import build
 from googleapiclient.http import MediaFileUpload
@@ -83,60 +81,15 @@ async def generate_voiceover(text, output_file="narration.mp3"):
     await communicate.save(output_file)
     print(f"Voiceover generated successfully: {output_file}")
 
-def download_multi_scene_visuals(duration_needed):
-    # Multiple dynamic cartoon video clips for dynamic scenes
-    clip_urls = [
-        "https://assets.mixkit.co/videos/preview/mixkit-2d-animation-of-a-jungle-41584-large.mp4",
-        "https://assets.mixkit.co/videos/preview/mixkit-cartoon-forest-landscape-42861-large.mp4",
-        "https://assets.mixkit.co/videos/preview/mixkit-animation-of-a-cute-alien-character-42862-large.mp4"
-    ]
-    
-    downloaded_clips = []
-    for idx, url in enumerate(clip_urls):
-        clip_name = f"scene_{idx}.mp4"
-        try:
-            res = requests.get(url, stream=True, timeout=10)
-            if res.status_code == 200:
-                with open(clip_name, "wb") as f:
-                    for chunk in res.iter_content(chunk_size=1024*1024):
-                        f.write(chunk)
-                downloaded_clips.append(clip_name)
-        except Exception as e:
-            print(f"Failed clip download {idx}: {e}")
-
-    return downloaded_clips
-
 def create_video(story_title, audio_file="narration.mp3", output_video="story_video.mp4"):
-    print("Rendering Multi-Scene Dynamic Cartoon Video...")
+    print("Rendering Clean Cartoon Video with Color Background...")
     audio_clip = AudioFileClip(audio_file)
     duration = audio_clip.duration
 
-    clip_files = download_multi_scene_visuals(duration)
+    # Creating a bright cartoon style background (Sky Blue color: RGB 135, 206, 235) for Shorts 1080x1920
+    bg_clip = ColorClip(size=(1080, 1920), color=(135, 206, 235), duration=duration)
 
-    if clip_files:
-        clips = []
-        for file_path in clip_files:
-            c = VideoFileClip(file_path).resized((1080, 1920))
-            clips.append(c)
-        
-        # Combine scenes
-        full_clip = concatenate_videoclips(clips, method="compose")
-        if full_clip.duration < duration:
-            loop_cnt = int(duration / full_clip.duration) + 1
-            full_clip = concatenate_videoclips([full_clip] * loop_cnt, method="compose")
-        
-        final_visual = full_clip.subclipped(0, duration)
-    else:
-        # Fallback cartoon bg
-        img_url = "https://img.freepik.com/free-vector/cartoon-park-landscape-with-green-grass-trees-hills_107791-16781.jpg"
-        res = requests.get(img_url)
-        with open("bg.jpg", "wb") as f:
-            f.write(res.content)
-        img = Image.open("bg.jpg").resize((1080, 1920))
-        img.save("bg.jpg")
-        final_visual = ImageClip("bg.jpg").with_duration(duration)
-
-    video = CompositeVideoClip([final_visual]).with_audio(audio_clip)
+    video = CompositeVideoClip([bg_clip]).with_audio(audio_clip)
     video.write_videofile(output_video, fps=24, codec="libx264", audio_codec="aac")
     print(f"Video rendered successfully: {output_video}")
 
