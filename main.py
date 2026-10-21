@@ -10,7 +10,7 @@ from google.oauth2.credentials import Credentials
 from googleapiclient.discovery import build
 from googleapiclient.http import MediaFileUpload
 
-# Gemini API Configuration
+# Gemini API Setup
 GEMINI_KEY = os.getenv("GEMINI_API_KEY")
 genai.configure(api_key=GEMINI_KEY)
 
@@ -29,13 +29,25 @@ def save_progress(progress):
     with open(PROGRESS_FILE, "w", encoding="utf-8") as f:
         json.dump(progress, f, indent=4, ensure_ascii=False)
 
+def get_working_model():
+    # Dynamically select supported Gemini model
+    available_models = [m.name for m in genai.list_models() if 'generateContent' in m.supported_generation_methods]
+    print(f"Available Models: {available_models}")
+    for target in ['models/gemini-1.5-flash', 'models/gemini-1.5-pro', 'models/gemini-pro']:
+        if target in available_models:
+            return genai.GenerativeModel(target)
+    # Fallback to first valid model
+    if available_models:
+        return genai.GenerativeModel(available_models[0])
+    return genai.GenerativeModel('gemini-1.5-flash')
+
 def generate_episodic_story():
     progress = get_current_progress()
     current_part = progress.get("current_part", 1)
     total_parts = progress.get("total_parts", 5)
     story_title = progress.get("story_title", "")
 
-    model = genai.GenerativeModel('gemini-1.5-flash')
+    model = get_working_model()
 
     if current_part == 1 or not story_title:
         prompt = (
