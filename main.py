@@ -35,8 +35,8 @@ def generate_episodic_story():
     total_parts = progress.get("total_parts", 5)
     story_title = progress.get("story_title", "")
 
-    # Updated to standard Gemini 1.5 Flash model
-    model = genai.GenerativeModel('gemini-1.5-flash')
+    # Using the exact stable model name for python SDK
+    model = genai.GenerativeModel('gemini-pro')
 
     if current_part == 1 or not story_title:
         prompt = (
