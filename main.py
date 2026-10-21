@@ -39,16 +39,16 @@ def generate_episodic_story():
 
     if current_part == 1 or not story_title:
         prompt = (
-            "Generate an engaging, trending Hindi cartoon moral story for kids in 5 parts. "
-            "Write Part 1 as a detailed 45-60 second YouTube Shorts narration script in simple Hindi. "
-            "Start with 'Title: [Story Title]' at the top. Make it funny, exciting, and end with a strong cliffhanger hook. "
+            "Generate a highly engaging, super funny, and emotional Motu-Patlu / Chhota Bheem style Hindi 2D cartoon moral story for kids in 5 parts. "
+            "Write Part 1 as a detailed 60-second YouTube Shorts narration script in simple Hindi. "
+            "Start with 'Title: [Story Title]' at the top. Make it full of action, comedy, and end with an irresistible cliffhanger! "
             "Do NOT include scene directions or brackets in speech text."
         )
     else:
         prompt = (
-            f"We are continuing the Hindi cartoon story '{story_title}'. "
-            f"Write Part {current_part} of {total_parts} as a detailed 45-60 second YouTube Shorts narration script in simple Hindi. "
-            f"Keep high engagement, bright cartoon mood, and moral value."
+            f"We are continuing the hit Hindi cartoon story '{story_title}'. "
+            f"Write Part {current_part} of {total_parts} as a detailed 60-second YouTube Shorts narration script in simple Hindi. "
+            f"Keep high excitement, funny cartoon dialogue, and strong moral value."
         )
 
     response = model.generate_content(prompt)
@@ -64,7 +64,7 @@ def generate_episodic_story():
                 story_title = line.replace("Title:", "").replace("शीर्षक:", "").replace("कहानी:", "").strip()
                 break
         if not story_title:
-            story_title = "PunToon Kids Story"
+            story_title = "Majedar Cartoon Katha"
         progress["story_title"] = story_title
 
     if current_part >= total_parts:
@@ -83,53 +83,60 @@ async def generate_voiceover(text, output_file="narration.mp3"):
     await communicate.save(output_file)
     print(f"Voiceover generated successfully: {output_file}")
 
-def download_cartoon_visuals(duration_needed, output_video="bg_clip.mp4"):
-    # Fetching cartoon animation loop clip
-    video_urls = [
+def download_multi_scene_visuals(duration_needed):
+    # Multiple dynamic cartoon video clips for dynamic scenes
+    clip_urls = [
+        "https://assets.mixkit.co/videos/preview/mixkit-2d-animation-of-a-jungle-41584-large.mp4",
         "https://assets.mixkit.co/videos/preview/mixkit-cartoon-forest-landscape-42861-large.mp4",
-        "https://assets.mixkit.co/videos/preview/mixkit-2d-animation-of-a-jungle-41584-large.mp4"
+        "https://assets.mixkit.co/videos/preview/mixkit-animation-of-a-cute-alien-character-42862-large.mp4"
     ]
     
-    for url in video_urls:
+    downloaded_clips = []
+    for idx, url in enumerate(clip_urls):
+        clip_name = f"scene_{idx}.mp4"
         try:
             res = requests.get(url, stream=True, timeout=10)
             if res.status_code == 200:
-                with open(output_video, "wb") as f:
+                with open(clip_name, "wb") as f:
                     for chunk in res.iter_content(chunk_size=1024*1024):
                         f.write(chunk)
-                print("Downloaded dynamic animated cartoon clip!")
-                return True
+                downloaded_clips.append(clip_name)
         except Exception as e:
-            print(f"Video download attempt failed: {e}")
+            print(f"Failed clip download {idx}: {e}")
 
-    # Fallback to styled image if video fetch fails
-    img_url = "https://img.freepik.com/free-vector/cartoon-park-landscape-with-green-grass-trees-hills_107791-16781.jpg"
-    res = requests.get(img_url)
-    if res.status_code == 200:
+    return downloaded_clips
+
+def create_video(story_title, audio_file="narration.mp3", output_video="story_video.mp4"):
+    print("Rendering Multi-Scene Dynamic Cartoon Video...")
+    audio_clip = AudioFileClip(audio_file)
+    duration = audio_clip.duration
+
+    clip_files = download_multi_scene_visuals(duration)
+
+    if clip_files:
+        clips = []
+        for file_path in clip_files:
+            c = VideoFileClip(file_path).resized((1080, 1920))
+            clips.append(c)
+        
+        # Combine scenes
+        full_clip = concatenate_videoclips(clips, method="compose")
+        if full_clip.duration < duration:
+            loop_cnt = int(duration / full_clip.duration) + 1
+            full_clip = concatenate_videoclips([full_clip] * loop_cnt, method="compose")
+        
+        final_visual = full_clip.subclipped(0, duration)
+    else:
+        # Fallback cartoon bg
+        img_url = "https://img.freepik.com/free-vector/cartoon-park-landscape-with-green-grass-trees-hills_107791-16781.jpg"
+        res = requests.get(img_url)
         with open("bg.jpg", "wb") as f:
             f.write(res.content)
         img = Image.open("bg.jpg").resize((1080, 1920))
         img.save("bg.jpg")
-    return False
+        final_visual = ImageClip("bg.jpg").with_duration(duration)
 
-def create_video(story_title, audio_file="narration.mp3", output_video="story_video.mp4"):
-    print("Rendering Animated Cartoon Video...")
-    audio_clip = AudioFileClip(audio_file)
-    duration = audio_clip.duration
-
-    has_video = download_cartoon_visuals(duration)
-
-    if has_video and os.path.exists("bg_clip.mp4"):
-        clip = VideoFileClip("bg_clip.mp4")
-        if clip.duration < duration:
-            # Loop clip to match audio length
-            loop_count = int(duration / clip.duration) + 1
-            clip = concatenate_videoclips([clip] * loop_count)
-        clip = clip.subclipped(0, duration).resized((1080, 1920))
-    else:
-        clip = ImageClip("bg.jpg").with_duration(duration)
-
-    video = CompositeVideoClip([clip]).with_audio(audio_clip)
+    video = CompositeVideoClip([final_visual]).with_audio(audio_clip)
     video.write_videofile(output_video, fps=24, codec="libx264", audio_codec="aac")
     print(f"Video rendered successfully: {output_video}")
 
@@ -154,9 +161,9 @@ def upload_to_youtube(video_path, title):
 
     request_body = {
         "snippet": {
-            "title": f"{title} | Animated Hindi Story #Shorts",
-            "description": "Watch full animated Hindi cartoon story! #shorts #cartoon #moralstories",
-            "tags": ["shorts", "hindi stories", "cartoon", "puntoon kids", "moral story"],
+            "title": f"{title} | Majedar Hindi Cartoon Story #Shorts",
+            "description": "Dekhiye sabse majedar hindi cartoon moral stories! Subscribe for daily videos. #shorts #cartoon #motupatlu #moralstories",
+            "tags": ["shorts", "hindi stories", "cartoon", "motu patlu", "chhota bheem", "puntoon kids"],
             "categoryId": "15"
         },
         "status": {
