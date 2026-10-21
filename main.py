@@ -1,9 +1,4 @@
 import os
-import subprocess
-
-# Auto-upgrade libraries to latest versions to prevent any 404/NotFound errors
-subprocess.run(["pip", "install", "--upgrade", "google-generativeai", "edge-tts", "moviepy", "pillow", "google-api-python-client", "google-auth-oauthlib"])
-
 import json
 import asyncio
 import requests
@@ -15,7 +10,7 @@ from google.oauth2.credentials import Credentials
 from googleapiclient.discovery import build
 from googleapiclient.http import MediaFileUpload
 
-# Gemini API Configuration
+# Gemini API Setup
 GEMINI_KEY = os.getenv("GEMINI_API_KEY")
 genai.configure(api_key=GEMINI_KEY)
 
@@ -40,7 +35,6 @@ def generate_episodic_story():
     total_parts = progress.get("total_parts", 5)
     story_title = progress.get("story_title", "")
 
-    # Using the standard modern Gemini 1.5 Flash model
     model = genai.GenerativeModel('gemini-1.5-flash')
 
     if current_part == 1 or not story_title:
@@ -107,7 +101,7 @@ def create_video(audio_file="narration.mp3", output_video="story_video.mp4"):
         preset="medium", 
         ffmpeg_params=["-pix_fmt", "yuv420p"]
     )
-    print("Video rendered successfully without errors!")
+    print("Video rendered successfully!")
 
 def upload_to_youtube(video_path, title):
     client_id = os.getenv("YOUTUBE_CLIENT_ID")
