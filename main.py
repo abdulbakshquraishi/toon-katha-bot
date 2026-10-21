@@ -1,6 +1,8 @@
 import os
 import json
+import asyncio
 import google.generativeai as genai
+import edge_tts
 
 # Gemini API Configure
 GEMINI_KEY = os.getenv("GEMINI_API_KEY")
@@ -31,14 +33,15 @@ def generate_episodic_story():
 
     if current_part == 1 or not story_title:
         prompt = (
-            "Generate an engaging, high-hook moral or suspense story outline for kids/youth in 5 short parts. "
-            "Now write ONLY Part 1 of 5 as a 30-second YouTube Short script in simple Hindi. "
-            "Start with 'Title: [Story Title]' at the top and end with a strong cliffhanger hook for Part 2."
+            "Generate an engaging, trending moral or suspense story for kids/youth in 5 short parts. "
+            "Write ONLY Part 1 of 5 as a 30-second YouTube Short narration script in simple Hindi. "
+            "Start with 'Title: [Story Title]' at the top and end with a strong cliffhanger hook for Part 2. "
+            "Do NOT include scene directions or brackets in speech text."
         )
     else:
         prompt = (
             f"We are continuing the Hindi story '{story_title}'. "
-            f"Write ONLY Part {current_part} of {total_parts} as a 30-second YouTube Short script in simple Hindi. "
+            f"Write ONLY Part {current_part} of {total_parts} as a 30-second YouTube Short narration script in simple Hindi. "
             f"Maintain high suspense and end with a hook for the next episode."
         )
 
@@ -48,7 +51,7 @@ def generate_episodic_story():
     print(f"--- Episode {current_part}/{total_parts} Generated ---")
     print(story_text)
 
-    # Extract title if Part 1
+    # Extract title
     if current_part == 1:
         lines = story_text.splitlines()
         for line in lines:
@@ -56,10 +59,10 @@ def generate_episodic_story():
                 story_title = line.replace("Title:", "").replace("शीर्षक:", "").replace("कहानी:", "").strip()
                 break
         if not story_title:
-            story_title = "Trending Katha Series"
+            story_title = "Trending Toon Story"
         progress["story_title"] = story_title
 
-    # Update Part progress
+    # Update progress counter
     if current_part >= total_parts:
         progress["current_part"] = 1
         progress["story_title"] = ""
@@ -67,7 +70,18 @@ def generate_episodic_story():
         progress["current_part"] += 1
 
     save_progress(progress)
+    return story_text, story_title, current_part
+
+async def generate_voiceover(text, output_file="narration.mp3"):
+    # Clear out formatting for clean TTS
+    clean_text = "\n".join([line for line in text.splitlines() if not line.startswith("Title:") and not line.startswith("शीर्षक:")])
+    communicate = edge_tts.Communicate(clean_text, voice="hi-IN-SwaraNeural")
+    await communicate.save(output_file)
+    print(f"Voiceover generated successfully: {output_file}")
 
 if __name__ == "__main__":
     print("Starting ToonKatha Daily Episode Pipeline...")
-    generate_episodic_story()
+    story_text, story_title, current_part = generate_episodic_story()
+    
+    print("Generating Hindi Voiceover...")
+    asyncio.run(generate_voiceover(story_text))
