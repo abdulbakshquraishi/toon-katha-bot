@@ -1,10 +1,9 @@
 import os
 import json
 import asyncio
-import numpy as np
+import requests
 import edge_tts
-from moviepy import AudioFileClip, ImageClip, CompositeVideoClip
-from PIL import Image, ImageDraw, ImageFont
+from moviepy import AudioFileClip, ImageClip, TextClip, CompositeVideoClip
 from google.oauth2.credentials import Credentials
 from googleapiclient.discovery import build
 from googleapiclient.http import MediaFileUpload
@@ -29,18 +28,18 @@ def generate_full_story():
     part = progress.get("current_part", 1)
     
     stories = {
-        1: ("Sacche Dost Ki Kahani", 
-            "Ek sundar jungle mein do dost rehte the, Ramesh aur Suresh. Dono hamesha ek doosre ki madad karte the. "
-            "Ek din jungle mein ek bada shikar aa gaya. Suresh ne bina apni jaan ki parwah kiye Ramesh ko bachaya. "
-            "Isse humein yeh seekh milti hai ki saccha dost wohi hai jo mushkil waqt mein hamesha aapke sath khada rahe."),
+        1: ("Sacche Dost Ki Anokhi Kahani", 
+            "Ek ghane jungle mein do sacche dost Ramesh aur Suresh rehte the. Dono hamesha ek doosre ki madad karte the. "
+            "Ek din jab unpar ek bada sankat aaya, toh Suresh ne apni jaan par khel kar Ramesh ko bachaya. "
+            "Dosto, isse humein yeh seekh milti hai ki saccha dost wohi hai jo har musibat mein aapka sath de!"),
         2: ("Lalach Ka Bura Nateeja", 
-            "Ek gaon mein ek kisan rehta tha jiske paas ek anokhi murgi thi. Woh murgi roz sone ka ek anda deti thi. "
-            "Kisan ne lalach mein aakar socha ki murgi ke pet se saare ande ek sath nikal leta hoon. "
+            "Ek gaon mein ek lalachu kisan ke paas ek anokhi murgi thi jo roz sone ka anda deti thi. "
+            "Kisan ne socha ki ek hi baar mein saare ande nikal kar ameer ban jau. "
             "Usne murgi ko kaat diya aur uske haath kuch nahi aaya. Lalach hamesha nuksan hi karwata hai."),
-        3: ("Mehnat Aur Lagan", 
-            "Rohan padhai mein thoda kamzor tha, lekin usne kabhi haar nahi maani. Woh roz der raat tak mehnat karta raha. "
-            "Pariksha ke din aaye aur Rohan ne poore school mein pehla sthan prapt kiya. "
-            "Koshish karne walon ki kabhi haar nahi hoti, bas mehnat par vishwas rakhein.")
+        3: ("Mehnat Se Hi Jeet Hai", 
+            "Rohan padhai mein kamzor tha par usne kabhi koshish karna nahi chhoda. Woh roz din-raat mehnat karta raha. "
+            "Jab pariksha ka result aaya toh Rohan ne poore district mein top kiya. "
+            "Mehnat karne walon ki kabhi haar nahi hoti, bas apne sapno par vishwas rakhein.")
     }
     
     title, text = stories.get(part, stories[1])
@@ -54,27 +53,42 @@ def generate_full_story():
     return title, text
 
 async def generate_voiceover(text, output_file="narration.mp3"):
-    # Loud and clear voice parameters
-    communicate = edge_tts.Communicate(text, voice="hi-IN-SwaraNeural", rate="+0%", volume="+50%")
+    communicate = edge_tts.Communicate(text, voice="hi-IN-SwaraNeural", rate="-5%", volume="+50%")
     await communicate.save(output_file)
     print("Voiceover generated successfully!")
 
-def create_hd_background():
-    # Generate clean 1080x1920 HD gradient background
-    img = Image.new("RGB", (1080, 1920), color=(34, 139, 34))
-    draw = ImageDraw.Draw(img)
-    draw.rectangle([50, 50, 1030, 1870], outline=(255, 215, 0), width=15)
-    img.save("bg.jpg")
+def fetch_cartoon_image():
+    print("Fetching High-Quality Cartoon Image...")
+    prompt = "cartoon style cute jungle animation story scene for kids, 8k resolution, vibrant colors"
+    url = f"https://image.pollinations.ai/prompt/{prompt}?width=1080&height=1920&nologo=true"
+    res = requests.get(url)
+    with open("bg.jpg", "wb") as f:
+        f.write(res.content)
+    print("Cartoon image fetched successfully!")
 
-def create_video(audio_file="narration.mp3", output_video="story_video.mp4"):
-    print("Rendering HD High-Volume Video...")
+def create_video(title, audio_file="narration.mp3", output_video="story_video.mp4"):
+    print("Rendering Next-Level Video...")
     audio_clip = AudioFileClip(audio_file)
     duration = audio_clip.duration
 
-    create_hd_background()
+    fetch_cartoon_image()
 
     bg_clip = ImageClip("bg.jpg").with_duration(duration)
-    video = CompositeVideoClip([bg_clip]).with_audio(audio_clip)
+    
+    # Subtitle Overlay
+    try:
+        txt_clip = TextClip(
+            text=f"✨ {title} ✨", 
+            font_size=50, 
+            color='yellow', 
+            bg_color='black',
+            size=(1000, None), 
+            method='caption'
+        ).with_position(('center', 200)).with_duration(duration)
+        video = CompositeVideoClip([bg_clip, txt_clip]).with_audio(audio_clip)
+    except Exception as e:
+        print(f"Subtitle note: {e}, rendering basic visual.")
+        video = CompositeVideoClip([bg_clip]).with_audio(audio_clip)
     
     video.write_videofile(
         output_video, 
@@ -117,7 +131,7 @@ if __name__ == "__main__":
     print("Starting Automated YouTube Pipeline...")
     title, text = generate_full_story()
     asyncio.run(generate_voiceover(text))
-    create_video()
+    create_video(title)
     try:
         upload_to_youtube("story_video.mp4", title)
     except Exception as e:
