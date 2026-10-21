@@ -3,7 +3,7 @@ import json
 import asyncio
 import google.generativeai as genai
 import edge_tts
-from moviepy.editor import AudioFileClip, ColorClip
+from moviepy import AudioFileClip, ColorClip
 
 # Gemini API Configure
 GEMINI_KEY = os.getenv("GEMINI_API_KEY")
@@ -52,7 +52,6 @@ def generate_episodic_story():
     print(f"--- Episode {current_part}/{total_parts} Generated ---")
     print(story_text)
 
-    # Extract title
     if current_part == 1:
         lines = story_text.splitlines()
         for line in lines:
@@ -63,7 +62,6 @@ def generate_episodic_story():
             story_title = "Trending Toon Story"
         progress["story_title"] = story_title
 
-    # Update progress counter
     if current_part >= total_parts:
         progress["current_part"] = 1
         progress["story_title"] = ""
@@ -84,13 +82,9 @@ def create_video(audio_file="narration.mp3", output_video="story_video.mp4"):
     audio_clip = AudioFileClip(audio_file)
     duration = audio_clip.duration
 
-    # Create a 9:16 vertical background (Dark Blue / Suspense theme) - 1080x1920
     bg_clip = ColorClip(size=(1080, 1920), color=(20, 24, 33), duration=duration)
+    video = bg_clip.with_audio(audio_clip)
 
-    # Set audio to background clip
-    video = bg_clip.set_audio(audio_clip)
-
-    # Write final video file
     video.write_videofile(output_video, fps=24, codec="libx264", audio_codec="aac")
     print(f"Video rendered successfully: {output_video}")
 
