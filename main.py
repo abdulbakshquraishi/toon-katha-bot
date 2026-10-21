@@ -4,6 +4,7 @@ import asyncio
 import requests
 import edge_tts
 from moviepy import AudioFileClip, ImageClip, CompositeVideoClip
+from PIL import Image, ImageDraw, ImageFont
 from google.oauth2.credentials import Credentials
 from googleapiclient.discovery import build
 from googleapiclient.http import MediaFileUpload
@@ -27,32 +28,22 @@ def generate_full_story():
     progress = get_current_progress()
     part = progress.get("current_part", 1)
     
-    # 50-60 seconds detailed stories for high kid engagement
     stories = {
-        1: ("Sher Aur Choti Chuhiya Ki Kahani", 
-            "Ek bada aur shaktishali sher jungle mein gehri neend mein so raha tha. "
-            "Tabhi ek choti si natkhat chuhiya wahan aayi aur sher ki peeth par koodne lagi. "
-            "Sher gusse mein jaag gaya aur usne chuhiya ko apne panje mein pakad liya. "
-            "Chuhiya ne rokar kaha, 'Mera yakin karo maharaj, ek din main aapki madad karungi.' "
-            "Sher ko hansi aayi par usne chuhiya ko chhod diya. "
-            "Khabar faili ki kuch dino baad sher ek shikari ke jaal mein fas gaya. "
-            "Chuhiya ne apne teez daanto se jaal ko kaat diya aur sher ki jaan bachaye. "
-            "Dosto, isse seekh milti hai ki koi chota ho ya bada, har kisi ka apna ek mahatva hota hai!"),
-        2: ("Chatur Khargosh Aur Bada Sher", 
-            "Jungle ka raja sher roz bina wajah kayi janwaro ka shikar karta tha. "
-            "Sabhi janwaro ne milkar fasla kiya ki roz ek janwar sher ke paas bhojan ban kar jayega. "
-            "Ek din ek chatur khargosh ki baari aayi. Khargosh jaankarloot kar der se gaya. "
-            "Sher gusse mein garja, 'Itni der kyun ki?' "
-            "Khargosh ne kaha, 'Raja sahab, raste mein dusre sher ne mujhe rok liya tha.' "
-            "Sher gusse mein us kuye ke paas gaya aur kuye mein apni hi parchhai dekh kar kood gaya. "
-            "Sikh: Dosto, buddhi ki taqat sabse badi hoti hai!"),
-        3: ("Jadui Murgi Aur Lalach", 
-            "Ek garib kisan ke paas ek anokhi murgi thi jo roz subah sone ka ek anda deti thi. "
-            "Kisan roz us ande ko bechkar aaram se apna guzara karta tha. "
-            "Par ek din kisan ke dimaag mein lalach aa gaya. "
-            "Usne socha ki agar murgi ke pet ko kaat doon toh saare sone ke ande ek sath mil jayenge. "
-            "Usne murgi ko kaat diya par andar kuch nahi tha. "
-            "Sikh: Lalach karna sabse bura hota hai, jo paas hai usme khush rahein.")
+        1: ("Sher Aur Chuhiya", 
+            "Ek din jungle mein ek bada sher so raha tha. Ek choti chuhiya ne uski peeth par koodna shuru kiya. "
+            "Sher ki neend khul gayi aur usne chuhiya ko pakad liya. Chuhiya boli, 'Mujhe chhod do, kabhi main bhi kaam aaungi.' "
+            "Kuch din baad sher shikaari ke jaal mein fas gaya. Chuhiya ne aakar jaal kaat diya aur sher ki jaan bachai. "
+            "Sikh: Har choti cheez ka apna bada mahatva hota hai!"),
+        2: ("Chatur Khargosh", 
+            "Jungle ka ek ghamandi sher roz be-wajah janwaro ko marta tha. Sabhi ne milkar tay kiya ki roz ek janwar khud sher ke paas jayega. "
+            "Ek din chatur khargosh ki baari aayi. Woh der se sher ke paas gaya aur bola, 'Raja ji, raste mein ek aur sher mil gaya tha.' "
+            "Gusse mein sher kuye ke paas gaya aur apni hi parchhai dekh kar kuye mein kood gaya. "
+            "Sikh: Bal se nahi, buddhi se jeet milti hai!"),
+        3: ("Jadui Murgi", 
+            "Ek kisan ke paas ek aisi murgi thi jo roz sone ka anda deti thi. Kisan roz us ande ko bechkar ameer banta ja raha tha. "
+            "Lekin kisan ke dil mein lalach aa gaya ki woh ek hi baar mein saare ande nikal lega. "
+            "Usne murgi ko kaat diya aur uske haath kuch nahi laga. "
+            "Sikh: Lalach karne walon ka hamesha nuksan hota hai!")
     }
     
     title, text = stories.get(part, stories[1])
@@ -68,27 +59,41 @@ def generate_full_story():
 async def generate_voiceover(text, output_file="narration.mp3"):
     communicate = edge_tts.Communicate(text, voice="hi-IN-SwaraNeural", rate="+5%", volume="+60%")
     await communicate.save(output_file)
-    print("Long clear voiceover generated successfully!")
+    print("Voiceover generated successfully!")
 
-def fetch_cartoon_image():
-    print("Fetching Vibrant 3D Animated Visual...")
-    # Ultra High Quality 3D Pixar Style Cartoon Prompt for kids
-    prompt = "Cute 3D Pixar animation style lion and mouse story scene in magical vibrant colorful jungle, 8k vertical shorts wallpaper, hyper detailed, trending on artstation"
-    url = f"https://image.pollinations.ai/prompt/{prompt}?width=1080&height=1920&nologo=true"
-    res = requests.get(url)
-    with open("bg.jpg", "wb") as f:
-        f.write(res.content)
-    print("3D visual fetched successfully!")
+def fetch_multiple_cartoon_images():
+    print("Fetching Multiple 3D Animated Scenes...")
+    prompts = [
+        "Cute 3D Pixar style giant lion sleeping in magical jungle, vibrant colors, 8k vertical",
+        "Cute tiny cartoon mouse talking to big friendly lion in bright forest, 3d animation",
+        "Happy cartoon animals celebrating together in magical glowing jungle, 3d pixar style"
+    ]
+    
+    for i, prompt in enumerate(prompts):
+        url = f"https://image.pollinations.ai/prompt/{prompt}?width=1080&height=1920&nologo=true"
+        res = requests.get(url)
+        with open(f"bg_{i+1}.jpg", "wb") as f:
+            f.write(res.content)
+    print("All 3D cartoon scenes fetched successfully!")
 
 def create_video(title, audio_file="narration.mp3", output_video="story_video.mp4"):
-    print("Rendering Full Length Cartoon Video...")
+    print("Rendering Multi-Scene Dynamic Video...")
     audio_clip = AudioFileClip(audio_file)
     duration = audio_clip.duration
 
-    fetch_cartoon_image()
+    fetch_multiple_cartoon_images()
 
-    bg_clip = ImageClip("bg.jpg").with_duration(duration)
-    video = CompositeVideoClip([bg_clip]).with_audio(audio_clip)
+    # Split total duration across 3 clips for changing scenes
+    clip_duration = duration / 3.0
+
+    img1 = ImageClip("bg_1.jpg").with_duration(clip_duration)
+    img2 = ImageClip("bg_2.jpg").with_duration(clip_duration)
+    img3 = ImageClip("bg_3.jpg").with_duration(duration - (clip_duration * 2))
+
+    from moviepy import concatenate_videoclips
+    background_sequence = concatenate_videoclips([img1, img2, img3])
+
+    video = background_sequence.with_audio(audio_clip)
     
     video.write_videofile(
         output_video, 
@@ -98,7 +103,7 @@ def create_video(title, audio_file="narration.mp3", output_video="story_video.mp
         preset="medium", 
         ffmpeg_params=["-pix_fmt", "yuv420p"]
     )
-    print(f"Video rendered successfully! Total Duration: {duration} seconds.")
+    print("Multi-scene video rendered successfully!")
 
 def upload_to_youtube(video_path, title):
     client_id = os.getenv("YOUTUBE_CLIENT_ID")
@@ -114,8 +119,8 @@ def upload_to_youtube(video_path, title):
 
     request_body = {
         "snippet": {
-            "title": f"{title} | 3D Hindi Moral Stories #Shorts",
-            "description": "Dekhiye sabse majedar 3D cartoon kahaniyan! Channel ko subscribe karein. #shorts #moralstories #cartoon #kids",
+            "title": f"{title} | Hindi Moral Stories #Shorts",
+            "description": "Dekhiye sabse behtareen 3D animated kahaniyan! Subscribe for more. #shorts #moralstories #cartoon",
             "tags": ["shorts", "hindi stories", "cartoon", "moral story", "3d animation"],
             "categoryId": "15"
         },
@@ -128,7 +133,7 @@ def upload_to_youtube(video_path, title):
     print("Uploaded to YouTube successfully!")
 
 if __name__ == "__main__":
-    print("Starting Automated YouTube Pipeline...")
+    print("Starting Multi-Scene Automated Pipeline...")
     title, text = generate_full_story()
     asyncio.run(generate_voiceover(text))
     create_video(title)
