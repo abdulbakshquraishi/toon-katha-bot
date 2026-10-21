@@ -10,7 +10,6 @@ from google.oauth2.credentials import Credentials
 from googleapiclient.discovery import build
 from googleapiclient.http import MediaFileUpload
 
-# Gemini API Configure
 GEMINI_KEY = os.getenv("GEMINI_API_KEY")
 genai.configure(api_key=GEMINI_KEY)
 
@@ -40,13 +39,13 @@ def generate_episodic_story():
     if current_part == 1 or not story_title:
         prompt = (
             "Generate a funny and moral Hindi cartoon story for kids in 5 parts. "
-            "Write Part 1 as a 50-second engaging YouTube Shorts narration script in simple Hindi. "
-            "Start with 'Title: [Story Title]' at the top. Make it interesting and end with a cliffhanger."
+            "Write Part 1 as a 40-second YouTube Shorts script in simple Hindi. "
+            "Start with 'Title: [Story Title]' at the top."
         )
     else:
         prompt = (
             f"Continue the Hindi cartoon story '{story_title}'. "
-            f"Write Part {current_part} of {total_parts} as a 50-second engaging YouTube Shorts narration script in simple Hindi."
+            f"Write Part {current_part} of {total_parts} as a 40-second YouTube Shorts script in simple Hindi."
         )
 
     response = model.generate_content(prompt)
@@ -81,7 +80,6 @@ def create_video(audio_file="narration.mp3", output_video="story_video.mp4"):
     audio_clip = AudioFileClip(audio_file)
     duration = audio_clip.duration
 
-    # Download a reliable, high-quality cartoon background
     img_url = "https://img.freepik.com/free-vector/cartoon-park-landscape-with-green-grass-trees-hills_107791-16781.jpg"
     res = requests.get(img_url)
     with open("bg.jpg", "wb") as f:
@@ -92,7 +90,16 @@ def create_video(audio_file="narration.mp3", output_video="story_video.mp4"):
 
     bg_clip = ImageClip("bg.jpg").with_duration(duration)
     video = CompositeVideoClip([bg_clip]).with_audio(audio_clip)
-    video.write_videofile(output_video, fps=24, codec="libx264", audio_codec="aac")
+    
+    # Fixed with yuv420p pixel format so mobile players never show black screen
+    video.write_videofile(
+        output_video, 
+        fps=24, 
+        codec="libx264", 
+        audio_codec="aac", 
+        preset="medium", 
+        ffmpeg_params=["-pix_fmt", "yuv420p"]
+    )
     print("Video rendered successfully!")
 
 def upload_to_youtube(video_path, title):
